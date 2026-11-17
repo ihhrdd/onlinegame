@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#203c32">
+<title>芝士探險隊 3D</title>
+<style>
+:root { color-scheme:dark; --cream:#fff8e7; --muted:#b9c8b4; --yellow:#ffd66e; --glass:rgba(24,43,34,.88); }
+* { box-sizing:border-box; }
+body { margin:0; background:#203c32; color:var(--cream); font-family:Nunito,"Microsoft JhengHei",system-ui,sans-serif; overflow:hidden; }
+button,select { font:inherit; cursor:pointer; }
+button { border:1px solid #ffffff25; color:var(--cream); background:#ffffff0d; border-radius:12px; padding:11px 15px; }
+button:hover { background:#ffffff20; }
+button:focus-visible,select:focus-visible { outline:3px solid var(--yellow); outline-offset:3px; }
+button:disabled { opacity:.4; cursor:default; }
+#scene { width:100vw; height:100vh; height:100dvh; display:block; touch-action:none; }
+.top { position:fixed; inset:max(22px,env(safe-area-inset-top)) 24px auto; display:flex; gap:15px; align-items:flex-start; justify-content:space-between; pointer-events:none; }
+.glass { background:var(--glass); border:1px solid #ffffff20; box-shadow:0 10px 35px #16281d22; backdrop-filter:blur(14px); }
+.mission { border-radius:20px; padding:20px 24px; min-width:250px; }
+.brand { font-weight:800; font-size:16px; letter-spacing:1px; }
+.brand em { color:var(--yellow); font-size:11px; font-style:normal; margin-left:7px; }
+.mission-row { display:flex; gap:27px; align-items:center; margin-top:17px; }
+.count { font-size:29px; font-weight:800; font-variant-numeric:tabular-nums; }
+.count small { color:var(--muted); font-size:15px; font-weight:500; }
+.cheese-icon { font-size:29px; margin-right:9px; }
+.time { font-size:17px; font-variant-numeric:tabular-nums; }
+.caption { display:block; color:var(--muted); font-size:10px; margin-bottom:4px; }
+#goal { color:var(--muted); font-size:11px; margin:13px 0 0; }
+.top-actions { pointer-events:auto; display:flex; gap:8px; margin-left:auto; }
+.top-actions button { background:var(--glass); padding:11px 14px; font-size:12px; backdrop-filter:blur(10px); }
+.map-card { pointer-events:auto; width:208px; padding:13px; border-radius:18px; flex-shrink:0; }
+.map-title { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; font-size:11px; }
+.map-title button { border:0; padding:1px 4px; color:var(--muted); font-size:11px; }
+#map { width:100%; aspect-ratio:1; display:block; background:#eae6d2; border-radius:8px; }
+.map-legend { font-size:9px; color:var(--muted); display:flex; justify-content:space-between; margin-top:9px; }
+.map-legend b { color:var(--yellow); }.map-legend i { color:#91dcf6; font-style:normal; }
+.map-card.collapsed { width:136px; }.map-card.collapsed #map,.map-card.collapsed .map-legend { display:none; }.map-card.collapsed .map-title { margin:0; }
+.map-card.expanded { position:fixed; width:min(70vh,85vw); right:24px; top:85px; }
+.bottom { position:fixed; bottom:max(24px,env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); display:flex; gap:9px; align-items:center; pointer-events:auto; }
+.keys { color:#f6f1df; border-radius:14px; padding:13px 20px; font-size:11px; white-space:nowrap; }
+kbd { font-family:inherit; color:var(--yellow); font-weight:700; margin-right:4px; }
+.bottom button { background:var(--glass); white-space:nowrap; font-size:12px; }
+#toast { position:fixed; left:50%; top:26%; transform:translate(-50%,-10px); opacity:0; background:#203629ed; padding:13px 22px; border:1px solid #ffe2a244; border-radius:14px; color:var(--yellow); pointer-events:none; transition:.2s; font-size:14px; text-align:center; max-width:85vw; }
+#toast.visible { opacity:1; transform:translate(-50%,0); }
+#reticle { position:fixed; top:50%; left:50%; width:5px; height:5px; border-radius:50%; background:#ffffffc9; box-shadow:0 0 5px #24382b; display:none; pointer-events:none; }
+.veil { position:fixed; inset:0; display:grid; place-items:center; padding:20px; background:#15291c50; backdrop-filter:blur(6px); z-index:10; }
+.panel { width:min(460px,100%); padding:36px; border-radius:27px; background:#f9f5e8; color:#263e2e; box-shadow:0 24px 100px #11261844; max-height:92dvh; overflow:auto; }
+.panel-icon { font-size:44px; }
+.panel h1 { font-size:35px; letter-spacing:-1.5px; margin:13px 0 10px; line-height:1.25; }
+.panel p { font-size:13px; color:#6b7966; line-height:1.85; }
+.panel .lead { font-size:14px; }
+.controls-guide { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:16px 0 20px; }
+.controls-guide>div { background:#e9ecdd; padding:12px; border-radius:12px; font-size:12px; line-height:1.9; }
+.controls-guide span { display:block; font-size:10px; color:#78846d; }
+.panel label { display:block; font-size:12px; margin-bottom:8px; font-weight:700; }
+.panel select { width:100%; border:1px solid #d8dfce; background:#fffdf5; color:#314830; padding:12px; border-radius:10px; margin-bottom:18px; }
+.primary { background:#436e44; border:0; color:#fff8e7; width:100%; padding:15px; border-radius:12px; font-weight:700; }
+.primary:hover { background:#365d37; }
+.panel .secondary { color:#5c6b56; width:100%; margin-top:11px; border:1px solid #d8dfce; background:transparent; }
+.panel .secondary:hover { background:#e9ecdd; }
+.panel .fine { font-size:10px; margin-bottom:0; text-align:center; }
+.hidden { display:none!important; }
+.touch-controls { display:none; position:fixed; bottom:max(24px,env(safe-area-inset-bottom)); left:24px; right:24px; justify-content:space-between; align-items:flex-end; pointer-events:none; }
+#joystick { width:116px; height:116px; border-radius:50%; background:#1d342f55; border:1px solid #fff7; position:relative; touch-action:none; pointer-events:auto; }
+#stick { width:49px; height:49px; background:#fffbdfa8; border:1px solid white; border-radius:50%; position:absolute; top:33px; left:33px; pointer-events:none; }
+.touch-look { color:#fff9; font-size:11px; padding:10px; text-shadow:0 1px 4px #0008; }
+@media(pointer:coarse) { .touch-controls { display:flex; }.keys { display:none; }.bottom { bottom:max(29px,env(safe-area-inset-bottom)); }.bottom button { padding:10px; font-size:10px; } }
+@media(max-width:700px) { .top { inset:max(12px,env(safe-area-inset-top)) 12px auto; flex-wrap:wrap; gap:8px; }.mission { min-width:0; padding:13px 14px; border-radius:15px; }.brand { font-size:12px; }.brand em { font-size:9px; }.mission-row { gap:14px; margin-top:10px; }.count { font-size:22px; }.count small { font-size:12px; }.cheese-icon { font-size:21px; margin-right:5px; }.time { font-size:13px; }#goal { font-size:9px; margin-top:8px; max-width:175px; }.map-card { width:143px; padding:9px; border-radius:14px; }.map-legend { font-size:8px; }.map-title { font-size:10px; }.top-actions { position:fixed; top:auto; bottom:max(164px,calc(env(safe-area-inset-bottom) + 140px)); right:16px; flex-direction:column; }.top-actions button { font-size:11px; padding:10px; }.keys { display:none; }.panel { padding:26px; }.panel h1 { font-size:29px; }.panel-icon { font-size:35px; }.map-card.expanded { right:12px; top:15px; z-index:5; width:min(85vw,70vh); }.bottom { bottom:max(17px,env(safe-area-inset-bottom)); gap:5px; }.bottom button { padding:10px; font-size:10px; }.touch-controls { left:18px; right:12px; bottom:63px; }#joystick { width:100px; height:100px; }#stick { left:25px; top:25px; }.touch-look { max-width:90px; font-size:10px; } }
+@media(max-height:530px) { .panel { padding:20px 28px; }.panel-icon,.panel .fine { display:none; }.panel h1 { font-size:25px; margin-top:0; }.controls-guide { padding:4px 0 12px; }.panel p { margin:6px 0; }.map-card { width:135px; }.mission { padding:12px; }.mission-row { margin-top:6px; } }
+@media(prefers-reduced-motion:reduce) { * { transition:none!important; } }
+</style>
+</head>
+<body>
+<canvas id="scene" aria-label="3D 老鼠迷宮遊戲"></canvas>
+<div class="top">
+ <section class="mission glass"><div class="brand">芝士探險隊 <em>3D</em></div><div class="mission-row"><div class="count"><span class="cheese-icon">🧀</span><span id="collected">0</span><small> / <span id="total">5</span></small></div><div><span class="caption" id="level">第 1 關</span><span class="time" id="timer">00:00</span></div></div><p id="goal">收集所有芝士，再走到藍色的家。</p></section>
+ <div class="top-actions"><button id="cameraButton" aria-label="切換第一或第三人稱">第三人稱 · V</button><button id="pauseButton">暫停 · Esc</button></div>
+ <section class="map-card glass" id="mapCard"><div class="map-title"><strong>迷宮地圖</strong><div><button id="expandMap" aria-label="放大地圖">放大</button><button id="mapButton" aria-label="收起地圖">−</button></div></div><canvas id="map" width="440" height="440" aria-label="小地圖，顯示老鼠位置、朝向、剩餘芝士和出口"></canvas><div class="map-legend"><span>▲ 你</span><b>● 芝士</b><i>■ 家</i></div></section>
+</div>
+<div id="reticle"></div><div id="toast" role="status" aria-live="polite"></div>
+<div class="bottom"><div class="keys glass"><kbd>WASD</kbd> 移動　<kbd>← →</kbd> 轉向　拖動畫面環顧</div><button id="hintButton">路線提示 <span id="hintCount">3</span></button><button id="soundButton" aria-pressed="false">音效 關</button></div>
+<div class="touch-controls"><div id="joystick" role="group" aria-label="移動搖桿"><div id="stick"></div></div><div class="touch-look">拖動畫面<br>轉動視角</div></div>
+<div class="veil" id="overlay"><section class="panel"><div class="panel-icon" id="panelIcon">🐭 🧀</div><h1 id="panelTitle">用小老鼠的視角，<br>走進芝士迷宮。</h1><p class="lead" id="panelText">探索立體花園，吃掉所有芝士，再帶小老鼠回家。隨時切換第一或第三人稱。</p><div id="setup"><div class="controls-guide"><div>電腦操作<span>WASD 移動 · ← → 轉向<br>拖動畫面環顧 · V 切換視角</span></div><div>手機操作<span>左下搖桿移動<br>拖動畫面轉向 · 點按切換視角</span></div></div><label for="difficulty">迷宮大小</label><select id="difficulty"><option value="easy">輕鬆 · 5 塊芝士</option><option value="normal">標準 · 8 塊芝士</option><option value="hard">挑戰 · 12 塊芝士</option></select></div><button class="primary" id="playButton">開始探險 →</button><button class="secondary hidden" id="resetButton">重新選擇難度</button><p class="fine" id="panelFine">地圖會標示所有芝士和你的位置 · 沒有時間限制</p></section></div>
+<script>
+'use strict';
+/* The maze generator is shared with the original 2D game. */
+const DIFFICULTIES = {
+  easy: { name: '輕鬆', rooms: 6, cheese: 5 },
+  normal: { name: '標準', rooms: 8, cheese: 8 },
+  hard: { name: '挑戰', rooms: 10, cheese: 12 }
+};
+const key = (x,y) => `${x},${y}`;
+function createMaze(difficulty='easy', level=1, random=Math.random) {
+  const config=DIFFICULTIES[difficulty];
+  const rooms=config.rooms+Math.min(2,Math.floor((level-1)/3));
+  const size=rooms*2+1;
+  const grid=Array.from({length:size},()=>Array(size).fill(1));
+  const stack=[[1,1]]; grid[1][1]=0;
+  while(stack.length){
+    const [x,y]=stack[stack.length-1];
+    const options=[[2,0],[-2,0],[0,2],[0,-2]].filter(([dx,dy])=>x+dx>0&&y+dy>0&&x+dx<size-1&&y+dy<size-1&&grid[y+dy][x+dx]);
+    if(!options.length){stack.pop();continue;}
+    const [dx,dy]=options[Math.floor(random()*options.length)];
+    grid[y+dy/2][x+dx/2]=0;grid[y+dy][x+dx]=0;stack.push([x+dx,y+dy]);
+  }
+  const exit={x:size-2,y:size-2}, candidates=[];
+  for(let y=1;y<size-1;y+=2)for(let x=1;x<size-1;x+=2){
+    if((x!==1||y!==1)&&(x!==exit.x||y!==exit.y))candidates.push({x,y});
+  }
+  for(let i=candidates.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[candidates[i],candidates[j]]=[candidates[j],candidates[i]];}
+  const cheeses=candidates.slice(0,config.cheese+Math.min(3,level-1));
+  return {grid,size,exit,cheeses,start:{x:1,y:1}};
+}
+function findPath(grid,start,targets){
+  const targetSet=new Set(targets.map(p=>key(p.x,p.y)));
+  const queue=[start],parent=new Map([[key(start.x,start.y),null]]);
+  for(let i=0;i<queue.length;i++){
+    const p=queue[i],k=key(p.x,p.y);
+    if(targetSet.has(k)){
+      const path=[];let cursor=p;
+      while(cursor){path.push(cursor);cursor=parent.get(key(cursor.x,cursor.y));}
+      return path.reverse();
+    }
+    for(const [dx,dy] of [[0,-1],[1,0],[0,1],[-1,0]]){
+      const q={x:p.x+dx,y:p.y+dy},qk=key(q.x,q.y);
+      if(grid[q.y]?.[q.x]===0&&!parent.has(qk)){parent.set(qk,p);queue.push(q);}
+    }
+  }
+  return [];
+}
+function canMove(maze,player,dx,dy){return maze.grid[player.y+dy]?.[player.x+dx]===0;}
+
+
+const element = id => document.getElementById(id);
+const sceneCanvas = element('scene');
+const mapCanvas = element('map');
+const mapContext = mapCanvas.getContext('2d');
+const TILE = 2.4;
+const WALL_HEIGHT = 1.65;
+const PLAYER_RADIUS = 0.26;
+const settings = { difficulty:'easy', camera:'third', sound:false };
+const player = { x:3.6, z:3.6, yaw:0, facing:0, pitch:0 };
+const input = { keys:new Set(), joystickX:0, joystickY:0, drag:null, joystickPointer:null };
+let maze, cheeses, status='ready', level=1, elapsed=0, hints=3;
+let hintPath=[], hintUntil=0, toastUntil=0, lastFrame=0, walkPhase=0;
+let worldMesh, audioContext, gl, renderer;
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Matrices are column-major, matching WebGL's matrix uniforms.
+function multiply(left, right) {
+ const result = new Float32Array(16);
+ for (let column=0; column<4; column++) {
+  for (let row=0; row<4; row++) {
+   for (let k=0; k<4; k++) result[column*4+row] += left[k*4+row]*right[column*4+k];
+  }
+ }
+ return result;
+}
+function normalize(vector) {
+ const length = Math.hypot(...vector) || 1;
+ return vector.map(value=>value/length);
+}
+function cross(a,b) { return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]]; }
+function dot(a,b) { return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]; }
+function cameraMatrix(eye,target) {
+ const backward=normalize(eye.map((value,index)=>value-target[index]));
+ const right=normalize(cross([0,1,0],backward));
+ const up=cross(backward,right);
+ return new Float32Array([right[0],up[0],backward[0],0,right[1],up[1],backward[1],0,right[2],up[2],backward[2],0,-dot(right,eye),-dot(up,eye),-dot(backward,eye),1]);
+}
+function perspective(aspect) {
+ const near=.07, far=150, focal=1/Math.tan(Math.PI/5.4);
+ return new Float32Array([focal/aspect,0,0,0,0,focal,0,0,0,0,(far+near)/(near-far),-1,0,0,2*far*near/(near-far),0]);
+}
+function modelMatrix(x,y,z,scaleX,scaleY,scaleZ,rotation=0) {
+ const cosine=Math.cos(rotation), sine=Math.sin(rotation);
+ return new Float32Array([cosine*scaleX,0,-sine*scaleX,0,0,scaleY,0,0,sine*scaleZ,0,cosine*scaleZ,0,x,y,z,1]);
+}
+function triangle(vertices,a,b,c,color) {
+ const edge1=b.map((value,index)=>value-a[index]);
+ const edge2=c.map((value,index)=>value-a[index]);
+ const normal=normalize(cross(edge1,edge2));
+ for (const point of [a,b,c]) vertices.push(...point,...normal,...color);
+}
+function box(vertices,x,y,z,width,height,depth,color) {
+ const points=[[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]].map(p=>[x+p[0]*width/2,y+p[1]*height/2,z+p[2]*depth/2]);
+ for (const face of [[0,3,2,1],[4,5,6,7],[0,4,7,3],[1,2,6,5],[3,7,6,2],[0,1,5,4]]) {
+  triangle(vertices,points[face[0]],points[face[1]],points[face[2]],color);
+  triangle(vertices,points[face[0]],points[face[2]],points[face[3]],color);
+ }
+}
+function sphereVertices() {
+ const vertices=[],segments=12,rings=8;
+ const point=(latitude,longitude)=>[Math.sin(latitude)*Math.cos(longitude),Math.cos(latitude),Math.sin(latitude)*Math.sin(longitude)];
+ for(let row=0;row<rings;row++) for(let column=0;column<segments;column++) {
+  const latitude=row*Math.PI/rings, nextLatitude=(row+1)*Math.PI/rings;
+  const longitude=column*2*Math.PI/segments, nextLongitude=(column+1)*2*Math.PI/segments;
+  triangle(vertices,point(latitude,longitude),point(nextLatitude,nextLongitude),point(nextLatitude,longitude),[1,1,1]);
+  triangle(vertices,point(latitude,longitude),point(latitude,nextLongitude),point(nextLatitude,nextLongitude),[1,1,1]);
+ }
+ return vertices;
+}
+function wedgeVertices() {
+ const vertices=[],a=[-.43,-.2,.32],b=[.43,-.2,.32],c=[0,-.2,-.48];
+ const top=p=>[p[0],.2,p[2]],color=[1,1,1];
+ triangle(vertices,top(a),top(b),top(c),color);
+ triangle(vertices,c,b,a,color);
+ for(const [p,q] of [[a,b],[b,c],[c,a]]) {
+  triangle(vertices,p,top(p),top(q),color);
+  triangle(vertices,p,top(q),q,color);
+ }
+ return vertices;
+}
+function createRenderer(context) {
+ const vertexSource=`
+  attribute vec3 aPosition; attribute vec3 aNormal; attribute vec3 aColor;
+  uniform mat4 uViewProjection; uniform mat4 uModel; uniform vec3 uColor;
+  varying vec3 vPosition; varying vec3 vColor; varying vec3 vNormal;
+  void main() {
+   vec4 world=uModel*vec4(aPosition,1.0);
+   vPosition=world.xyz; vColor=aColor*uColor;
+   vec3 scaleSquared=vec3(dot(uModel[0].xyz,uModel[0].xyz),dot(uModel[1].xyz,uModel[1].xyz),dot(uModel[2].xyz,uModel[2].xyz));
+   vNormal=normalize(mat3(uModel)*(aNormal/scaleSquared));
+   gl_Position=uViewProjection*world;
+  }`;
+ const fragmentSource=`
+  precision mediump float;
+  uniform vec3 uEye; varying vec3 vPosition; varying vec3 vColor; varying vec3 vNormal;
+  void main() {
+   vec3 normal=normalize(vNormal);
+   float light=.64+.36*max(dot(normal,normalize(vec3(-.4,.9,.3))),0.0);
+   vec3 color=vColor*light;
+   float fog=smoothstep(16.0,65.0,length(vPosition-uEye));
+   gl_FragColor=vec4(mix(color,vec3(.78,.85,.75),fog*.78),1.0);
+  }`;
+ function compile(type,source) {
+  const shader=context.createShader(type);
+  context.shaderSource(shader,source); context.compileShader(shader);
+  if(!context.getShaderParameter(shader,context.COMPILE_STATUS)) throw new Error(context.getShaderInfoLog(shader));
+  return shader;
+ }
+ const program=context.createProgram();
+ context.attachShader(program,compile(context.VERTEX_SHADER,vertexSource));
+ context.attachShader(program,compile(context.FRAGMENT_SHADER,fragmentSource));
+ context.linkProgram(program);
+ if(!context.getProgramParameter(program,context.LINK_STATUS)) throw new Error(context.getProgramInfoLog(program));
+ context.useProgram(program); context.enable(context.DEPTH_TEST);
+ const position=context.getAttribLocation(program,'aPosition');
+ const normal=context.getAttribLocation(program,'aNormal');
+ const color=context.getAttribLocation(program,'aColor');
+ for(const attribute of [position,normal,color]) context.enableVertexAttribArray(attribute);
+ const uniforms={};
+ for(const name of ['uViewProjection','uModel','uColor','uEye']) uniforms[name]=context.getUniformLocation(program,name);
+ function mesh(vertices) {
+  const buffer=context.createBuffer();
+  context.bindBuffer(context.ARRAY_BUFFER,buffer);
+  context.bufferData(context.ARRAY_BUFFER,new Float32Array(vertices),context.STATIC_DRAW);
+  return {buffer,count:vertices.length/9};
+ }
+ function draw(mesh,model,tint=[1,1,1]) {
+  context.bindBuffer(context.ARRAY_BUFFER,mesh.buffer);
+  context.vertexAttribPointer(position,3,context.FLOAT,false,36,0);
+  context.vertexAttribPointer(normal,3,context.FLOAT,false,36,12);
+  context.vertexAttribPointer(color,3,context.FLOAT,false,36,24);
+  context.uniformMatrix4fv(uniforms.uModel,false,model);
+  context.uniform3fv(uniforms.uColor,tint);
+  context.drawArrays(context.TRIANGLES,0,mesh.count);
+ }
+ const cubeData=[]; box(cubeData,0,0,0,1,1,1,[1,1,1]);
+ return {mesh,draw,uniforms,sphere:mesh(sphereVertices()),cube:mesh(cubeData),wedge:mesh(wedgeVertices())};
+}
+function solid(x,z,radius=PLAYER_RADIUS) {
+ for(let row=Math.floor((z-radius)/TILE);row<=Math.floor((z+radius)/TILE);row++) {
+  for(let column=Math.floor((x-radius)/TILE);column<=Math.floor((x+radius)/TILE);column++) {
+   if(maze.grid[row]?.[column]!==0) return true;
+  }
+ }
+ return false;
+}
+function buildWorld() {
+ const vertices=[],size=maze.size*TILE;
+ box(vertices,size/2,-.13,size/2,size+80,.2,size+80,[.67,.76,.52]);
+ box(vertices,size/2,-.035,size/2,size,.1,size,[.88,.84,.67]);
+ for(let row=0;row<maze.size;row++) for(let column=0;column<maze.size;column++) {
+  const x=(column+.5)*TILE,z=(row+.5)*TILE;
+  if(maze.grid[row][column]) {
+   const variation=((row*31+column*17)%7)*.009;
+   box(vertices,x,.09,z,TILE,.18,TILE,[.45,.52,.32]);
+   box(vertices,x,WALL_HEIGHT/2,z,TILE-.025,WALL_HEIGHT,TILE-.025,[.27+variation,.46+variation,.25]);
+   box(vertices,x,WALL_HEIGHT+.04,z,TILE-.01,.12,TILE-.01,[.46+variation,.62+variation,.32]);
+   // The shallow blocks create a clipped hedge silhouette.
+   if((row+column)%3===0) box(vertices,x+.25,WALL_HEIGHT+.13,z-.3,TILE*.65,.12,TILE*.6,[.48,.64,.34]);
+  } else {
+   box(vertices,x,.025,z,TILE-.08,.025,TILE-.08,(row+column)%2?[.9,.865,.715]:[.87,.83,.67]);
+   box(vertices,x-TILE*.45,.043,z,TILE*.06,.012,TILE*.88,[.78,.77,.58]);
+  }
+ }
+ // A few trees outside the boundary give the garden a horizon.
+ for(let index=0;index<16;index++) {
+  const angle=index*Math.PI*2/16;
+  const x=size/2+Math.cos(angle)*(size*.75+5),z=size/2+Math.sin(angle)*(size*.75+5);
+  box(vertices,x,1.8,z,.4,3.6,.4,[.42,.32,.2]);
+  box(vertices,x,3.5,z,3.1,2.3,3.1,[.34,.52,.29]);
+  box(vertices,x+.2,4.7,z,2.1,1.1,2.1,[.44,.61,.34]);
+ }
+ if(worldMesh) gl.deleteBuffer(worldMesh.buffer);
+ worldMesh=renderer.mesh(vertices);
+}
+function newLevel() {
+ maze=createMaze(settings.difficulty,level);
+ cheeses=maze.cheeses.map(point=>({...point,eaten:false}));
+ player.x=1.5*TILE; player.z=1.5*TILE; player.pitch=0;
+ player.yaw=maze.grid[1][2]===0?Math.PI/2:Math.PI;
+ player.facing=player.yaw;
+ elapsed=0; hints=3; hintPath=[]; walkPhase=0;
+ clearInput(); buildWorld(); updateHud(); drawMap();
+}
+function updateHud() {
+ const count=cheeses.filter(cheese=>cheese.eaten).length;
+ element('collected').textContent=count; element('total').textContent=cheeses.length;
+ element('level').textContent=`第 ${level} 關`;
+ element('goal').textContent=count===cheeses.length?'芝士集齊了！前往藍色的家。':'收集所有芝士，再走到藍色的家。';
+ element('hintCount').textContent=hints;
+ element('hintButton').disabled=hints===0||status!=='playing';
+ element('cameraButton').textContent=settings.camera==='third'?'第三人稱 · V':'第一人稱 · V';
+ element('reticle').style.display=settings.camera==='first'?'block':'none';
+ const seconds=Math.floor(elapsed);
+ element('timer').textContent=`${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;
+}
+function notify(message) {
+ element('toast').textContent=message;
+ element('toast').classList.add('visible'); toastUntil=performance.now()+2700;
+}
+function beep(frequency=750) {
+ if(!settings.sound) return;
+ try {
+  audioContext??=new (window.AudioContext||window.webkitAudioContext)();
+  audioContext.resume();
+  const oscillator=audioContext.createOscillator(),gain=audioContext.createGain();
+  oscillator.connect(gain);gain.connect(audioContext.destination);
+  oscillator.frequency.value=frequency;gain.gain.setValueAtTime(.08,audioContext.currentTime);
+  gain.gain.exponentialRampToValueAtTime(.001,audioContext.currentTime+.2);
+  oscillator.start();oscillator.stop(audioContext.currentTime+.2);
+ } catch { /* Audio is optional if the browser blocks it. */ }
+}
+function clearInput() {
+ input.keys.clear();input.joystickX=0;input.joystickY=0;input.drag=null;input.joystickPointer=null;
+ element('stick').style.transform='translate(0,0)';
+}
+function resume() {
+ if(!renderer) return;
+ status='playing';element('overlay').classList.add('hidden');clearInput();updateHud();
+}
+function pause() {
+ if(status!=='playing') return;
+ status='paused';clearInput();
+ element('panelTitle').textContent='休息一下，芝士等你。';
+ element('panelText').textContent='按繼續探險，回到剛才的位置。';
+ element('setup').classList.add('hidden');element('resetButton').classList.remove('hidden');
+ element('playButton').textContent='繼續探險 →';element('overlay').classList.remove('hidden');updateHud();
+}
+function win() {
+ status='won';clearInput();beep(1100);
+ element('panelTitle').textContent='芝士滿載，平安回家！';
+ element('panelText').textContent=`第 ${level} 關完成，收集了 ${cheeses.length} 塊芝士。用時 ${element('timer').textContent}。`;
+ element('setup').classList.add('hidden');element('resetButton').classList.remove('hidden');
+ element('playButton').textContent='下一個迷宮 →';element('overlay').classList.remove('hidden');updateHud();
+}
+function switchCamera() { settings.camera=settings.camera==='third'?'first':'third';player.pitch=0;updateHud(); }
+function hint() {
+ if(status!=='playing'||hints===0) return;
+ const start={x:Math.floor(player.x/TILE),y:Math.floor(player.z/TILE)};
+ const targets=cheeses.filter(cheese=>!cheese.eaten);
+ hintPath=findPath(maze.grid,start,targets.length?targets:[maze.exit]);
+ hintUntil=elapsed+12;hints--;updateHud();notify('跟著金色路標走，路線會保留 12 秒。');
+}
+function updateMovement(delta) {
+ let forward=(input.keys.has('w')||input.keys.has('arrowup')?1:0)-(input.keys.has('s')||input.keys.has('arrowdown')?1:0)-input.joystickY;
+ let side=(input.keys.has('d')?1:0)-(input.keys.has('a')?1:0)+input.joystickX;
+ const turn=(input.keys.has('arrowright')||input.keys.has('e')?1:0)-(input.keys.has('arrowleft')||input.keys.has('q')?1:0);
+ player.yaw+=turn*delta*2.1;
+ const length=Math.hypot(forward,side);
+ if(length>1) {forward/=length;side/=length;}
+ const speed=(input.keys.has('shift')?3.9:2.75)*delta;
+ const dx=(Math.sin(player.yaw)*forward+Math.cos(player.yaw)*side)*speed;
+ const dz=(-Math.cos(player.yaw)*forward+Math.sin(player.yaw)*side)*speed;
+ // Axis-by-axis collision lets the mouse slide along walls without cutting corners.
+ if(!solid(player.x+dx,player.z)) player.x+=dx;
+ if(!solid(player.x,player.z+dz)) player.z+=dz;
+ if(length>.08) { player.facing=Math.atan2(dx,-dz);walkPhase+=delta*13; }
+ for(const cheese of cheeses) {
+  if(!cheese.eaten&&Math.hypot(player.x-(cheese.x+.5)*TILE,player.z-(cheese.y+.5)*TILE)<.67) {
+   cheese.eaten=true;beep(650+cheeses.filter(item=>item.eaten).length*80);updateHud();
+   notify(cheeses.every(item=>item.eaten)?'全部芝士已收集！回家啦 🏡':'好味！收集到一塊芝士 🧀');
+  }
+ }
+ const exitDistance=Math.hypot(player.x-(maze.exit.x+.5)*TILE,player.z-(maze.exit.y+.5)*TILE);
+ if(exitDistance<.72&&cheeses.every(cheese=>cheese.eaten)) win();
+ if(hintPath.length&&elapsed>hintUntil) hintPath=[];
+}
+function drawMap() {
+ const context=mapContext,size=mapCanvas.width,cell=size/maze.size;
+ context.fillStyle='#eee7ce';context.fillRect(0,0,size,size);
+ for(let row=0;row<maze.size;row++) for(let column=0;column<maze.size;column++) {
+  if(maze.grid[row][column]) {context.fillStyle='#4a6740';context.fillRect(column*cell,row*cell,cell+.3,cell+.3);}
+ }
+ if(hintPath.length) {
+  context.strokeStyle='#e1a42e';context.lineWidth=cell*.2;context.lineCap='round';context.lineJoin='round';context.beginPath();
+  hintPath.forEach((point,index)=>{const x=(point.x+.5)*cell,y=(point.y+.5)*cell;if(index===0)context.moveTo(x,y);else context.lineTo(x,y);});context.stroke();
+ }
+ for(const cheese of cheeses) if(!cheese.eaten) {
+  context.fillStyle='#d99b0c';context.beginPath();context.arc((cheese.x+.5)*cell,(cheese.y+.5)*cell,cell*.25,0,Math.PI*2);context.fill();
+ }
+ context.fillStyle=cheeses.every(item=>item.eaten)?'#47bedb':'#72a5b5';
+ context.fillRect((maze.exit.x+.2)*cell,(maze.exit.y+.2)*cell,cell*.6,cell*.6);
+ context.save();context.translate(player.x/TILE*cell,player.z/TILE*cell);context.rotate(player.yaw);
+ context.beginPath();context.moveTo(0,-cell*.49);context.lineTo(cell*.31,cell*.32);context.lineTo(0,cell*.15);context.lineTo(-cell*.31,cell*.32);context.closePath();
+ context.fillStyle='#e57250';context.strokeStyle='#fff9e9';context.lineWidth=cell*.09;context.fill();context.stroke();context.restore();
+}
+function drawPart(mesh,x,y,z,sx,sy,sz,color,rotation=0) {
+ renderer.draw(mesh,modelMatrix(x,y,z,sx,sy,sz,rotation),color);
+}
+function drawMouse(time) {
+ const yaw=-player.facing;
+ const bob=reducedMotion?0:Math.sin(walkPhase*2)*.025;
+ function part(x,y,z,sx,sy,sz,color) {
+  const worldX=player.x+Math.cos(yaw)*x+Math.sin(yaw)*z;
+  const worldZ=player.z-Math.sin(yaw)*x+Math.cos(yaw)*z;
+  drawPart(renderer.sphere,worldX,y+bob,worldZ,sx,sy,sz,color,yaw);
+ }
+ part(0,.35,.08,.29,.27,.43,[.65,.62,.57]);
+ part(0,.45,-.32,.25,.23,.28,[.76,.72,.65]);
+ for(const side of [-1,1]) {
+  part(side*.21,.69,-.28,.145,.175,.085,[.72,.68,.63]);
+  part(side*.21,.7,-.35,.10,.125,.025,[.89,.61,.59]);
+  part(side*.16,.51,-.51,.043,.05,.035,[.08,.10,.08]);
+  part(side*.17,.53,-.535,.012,.014,.009,[1,.99,.91]);
+  part(side*.20,.13,-.17,.09,.08,.14,[.84,.60,.55]);
+  part(side*.20,.12,.32,.10,.08,.15,[.84,.60,.55]);
+ }
+ part(0,.39,-.60,.065,.052,.05,[.85,.47,.49]);
+ for(let index=0;index<8;index++) {
+  part(Math.sin(index*.5+time*2)*.09,.16-index*.006,.47+index*.075,.032,.032,.068,[.8,.55,.5]);
+ }
+}
+function drawCheese(cheese,time) {
+ const x=(cheese.x+.5)*TILE,z=(cheese.y+.5)*TILE;
+ const rotation=reducedMotion?0:time*.75;
+ const height=.46+(reducedMotion?0:Math.sin(time*2+cheese.x)*.065);
+ drawPart(renderer.sphere,x,.06,z,.46,.025,.4,[.72,.70,.48]);
+ drawPart(renderer.wedge,x,height,z,1,1,1,[1,.77,.22],rotation);
+ // Flattened dark ellipsoids sit just above the cheese's faces as holes.
+ for(const hole of [[-.12,.16,.065],[.12,-.08,.08],[.18,.21,.046]]) {
+  const hx=x+Math.cos(rotation)*hole[0]+Math.sin(rotation)*hole[1];
+  const hz=z-Math.sin(rotation)*hole[0]+Math.cos(rotation)*hole[1];
+  drawPart(renderer.sphere,hx,height+.205,hz,hole[2],.008,hole[2],[.76,.45,.08]);
+ }
+ const frontX=x+Math.sin(rotation)*.325,frontZ=z+Math.cos(rotation)*.325;
+ drawPart(renderer.sphere,frontX,height,frontZ,.085,.07,.008,[.76,.45,.08],rotation);
+}
+function drawExit(time) {
+ const x=(maze.exit.x+.5)*TILE,z=(maze.exit.y+.5)*TILE,open=cheeses.every(item=>item.eaten);
+ const color=open?[.38,.78,.81]:[.45,.58,.57];
+ drawPart(renderer.cube,x,.05,z,1.7,.08,1.7,[.49,.67,.65]);
+ drawPart(renderer.cube,x-.50,.61,z,.19,1.2,.35,color);
+ drawPart(renderer.cube,x+.50,.61,z,.19,1.2,.35,color);
+ drawPart(renderer.cube,x,1.24,z,1.2,.24,.4,color);
+ drawPart(renderer.sphere,x,1.55,z,.14,.14,.14,open?[1,.88,.37]:[.66,.70,.6]);
+ if(open) for(let index=0;index<6;index++) {
+  const angle=time+index*Math.PI/3;
+  drawPart(renderer.sphere,x+Math.cos(angle)*.7,.2+(time*.4+index*.24)%1.5,z+Math.sin(angle)*.7,.035,.035,.035,[.71,.94,.89]);
+ }
+}
+function cameraPosition() {
+ const sine=Math.sin(player.yaw),cosine=Math.cos(player.yaw);
+ if(settings.camera==='first') {
+  const eye=[player.x,.66,player.z];
+  return {eye,target:[eye[0]+sine,eye[1]+Math.tan(player.pitch),eye[2]-cosine]};
+ }
+ // Stop the follow camera before a hedge. It rises when squeezed into a corner.
+ let distance=.25;
+ for(let step=.3;step<=2.7;step+=.07) {
+  if(solid(player.x-sine*step,player.z+cosine*step,.12)) break;
+  distance=step;
+ }
+ const eye=[player.x-sine*distance,1.6+distance*.22-player.pitch,player.z+cosine*distance];
+ return {eye,target:[player.x+sine*.32,.37,player.z-cosine*.32]};
+}
+function render(time) {
+ const pixelRatio=Math.min(window.devicePixelRatio||1,1.75);
+ const width=Math.round(sceneCanvas.clientWidth*pixelRatio),height=Math.round(sceneCanvas.clientHeight*pixelRatio);
+ if(sceneCanvas.width!==width||sceneCanvas.height!==height) {sceneCanvas.width=width;sceneCanvas.height=height;}
+ gl.viewport(0,0,width,height);gl.clearColor(.78,.85,.75,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+ const camera=cameraPosition();
+ gl.uniformMatrix4fv(renderer.uniforms.uViewProjection,false,multiply(perspective(width/height),cameraMatrix(camera.eye,camera.target)));
+ gl.uniform3fv(renderer.uniforms.uEye,camera.eye);
+ renderer.draw(worldMesh,modelMatrix(0,0,0,1,1,1));
+ for(const cheese of cheeses) if(!cheese.eaten) drawCheese(cheese,time);
+ drawExit(time);
+ if(settings.camera==='third') drawMouse(time);
+ for(const point of hintPath) drawPart(renderer.sphere,(point.x+.5)*TILE,.085,(point.y+.5)*TILE,.13,.045,.13,[1,.72,.19]);
+}
+function frame(timestamp) {
+ const delta=Math.min((timestamp-lastFrame)/1000,.04);lastFrame=timestamp;
+ if(status==='playing') {elapsed+=delta;updateMovement(delta);updateHud();}
+ if(timestamp>toastUntil) element('toast').classList.remove('visible');
+ render(timestamp/1000);drawMap();requestAnimationFrame(frame);
+}
+
+element('playButton').addEventListener('click',()=>{
+ if(status==='ready') {settings.difficulty=element('difficulty').value;level=1;newLevel();}
+ if(status==='won') {level++;newLevel();}
+ resume();
+});
+element('pauseButton').addEventListener('click',()=>status==='paused'?resume():pause());
+element('cameraButton').addEventListener('click',switchCamera);
+element('hintButton').addEventListener('click',hint);
+element('resetButton').addEventListener('click',()=>{
+ status='ready';clearInput();element('setup').classList.remove('hidden');element('resetButton').classList.add('hidden');
+ element('panelTitle').textContent='準備好新的探險？';element('panelText').textContent='選擇迷宮大小，開始新的芝士旅程。';
+ element('playButton').textContent='開始探險 →';
+});
+element('soundButton').addEventListener('click',()=>{settings.sound=!settings.sound;element('soundButton').textContent=settings.sound?'音效 開':'音效 關';element('soundButton').setAttribute('aria-pressed',String(settings.sound));beep();});
+element('mapButton').addEventListener('click',()=>{
+ const collapsed=element('mapCard').classList.toggle('collapsed');element('mapCard').classList.remove('expanded');
+ element('mapButton').textContent=collapsed?'+':'−';element('mapButton').setAttribute('aria-label',collapsed?'展開地圖':'收起地圖');element('expandMap').textContent='放大';
+});
+element('expandMap').addEventListener('click',()=>{
+ element('mapCard').classList.remove('collapsed');element('mapButton').textContent='−';
+ const expanded=element('mapCard').classList.toggle('expanded');element('expandMap').textContent=expanded?'縮小':'放大';
+});
+document.addEventListener('keydown',event=>{
+ if(event.ctrlKey||event.metaKey||event.altKey) return;
+ if(event.key==='Escape') {if(status==='playing')pause();else if(status==='paused')resume();return;}
+ if(status!=='playing') return;
+ const pressed=event.key.toLowerCase();
+ if(['w','a','s','d','q','e','arrowup','arrowdown','arrowleft','arrowright','shift'].includes(pressed)) {event.preventDefault();input.keys.add(pressed);}
+ if(!event.repeat&&pressed==='v') switchCamera();
+ if(!event.repeat&&pressed==='h') hint();
+});
+document.addEventListener('keyup',event=>input.keys.delete(event.key.toLowerCase()));
+window.addEventListener('blur',()=>{clearInput();pause();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){clearInput();pause();}});
+sceneCanvas.addEventListener('pointerdown',event=>{
+ if(status!=='playing'||input.drag) return;
+ input.drag={id:event.pointerId,x:event.clientX,y:event.clientY};sceneCanvas.setPointerCapture(event.pointerId);
+});
+sceneCanvas.addEventListener('pointermove',event=>{
+ if(!input.drag||event.pointerId!==input.drag.id) return;
+ player.yaw+=(event.clientX-input.drag.x)*.006;
+ player.pitch=Math.max(-.5,Math.min(.5,player.pitch-(event.clientY-input.drag.y)*.004));
+ input.drag.x=event.clientX;input.drag.y=event.clientY;
+});
+for(const type of ['pointerup','pointercancel','lostpointercapture']) sceneCanvas.addEventListener(type,event=>{if(input.drag?.id===event.pointerId)input.drag=null;});
+const joystick=element('joystick');
+function moveJoystick(event) {
+ const bounds=joystick.getBoundingClientRect(),radius=bounds.width*.34;
+ let dx=event.clientX-(bounds.left+bounds.width/2),dy=event.clientY-(bounds.top+bounds.height/2);
+ const distance=Math.hypot(dx,dy);
+ if(distance>radius) {dx*=radius/distance;dy*=radius/distance;}
+ input.joystickX=dx/radius;input.joystickY=dy/radius;
+ element('stick').style.transform=`translate(${dx}px,${dy}px)`;
+}
+joystick.addEventListener('pointerdown',event=>{
+ if(status!=='playing'||input.joystickPointer!==null)return;
+ event.preventDefault();input.joystickPointer=event.pointerId;joystick.setPointerCapture(event.pointerId);moveJoystick(event);
+});
+joystick.addEventListener('pointermove',event=>{if(event.pointerId===input.joystickPointer)moveJoystick(event);});
+for(const type of ['pointerup','pointercancel','lostpointercapture']) joystick.addEventListener(type,event=>{
+ if(event.pointerId!==input.joystickPointer)return;
+ input.joystickPointer=null;input.joystickX=0;input.joystickY=0;element('stick').style.transform='translate(0,0)';
+});
+function showGraphicsError(message) {
+ status='error';clearInput();element('overlay').classList.remove('hidden');
+ element('panelTitle').textContent='3D 畫面暫時無法啟動';element('panelText').textContent=message;
+ element('setup').classList.add('hidden');element('playButton').classList.add('hidden');element('resetButton').classList.add('hidden');element('panelFine').classList.add('hidden');
+}
+sceneCanvas.addEventListener('webglcontextlost',event=>{event.preventDefault();showGraphicsError('顯示資源已中斷，請重新載入此頁以恢復遊戲。');});
+try {
+ gl=sceneCanvas.getContext('webgl',{antialias:true,alpha:false});
+ if(!gl) throw new Error('WebGL unavailable');
+ renderer=createRenderer(gl);newLevel();requestAnimationFrame(frame);
+} catch(error) {
+ console.error(error);
+ showGraphicsError('請使用支援 WebGL 的瀏覽器開啟。手機檔案預覽可能無法執行遊戲，請使用網頁網址或能執行 HTML 的瀏覽器。');
+}
+</script>
+</body>
+</html>
